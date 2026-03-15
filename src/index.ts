@@ -7,6 +7,7 @@ const API_BASE = "https://api.val.town";
 const FILE_CONTENT_MAX_ATTEMPTS = 4;
 const FILE_CONTENT_BASE_DELAY_MS = 250;
 const FILE_CONTENT_MAX_DELAY_MS = 4000;
+const DEFAULT_CONCURRENCY = 6;
 
 function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
@@ -42,6 +43,10 @@ interface ValTownLoaderOptions {
 	privacy?: "public" | "unlisted" | "private";
 	/** Max number of vals to fetch (handles pagination automatically). Defaults to all. */
 	limit?: number;
+	/** Whether to fetch file contents for each val. Defaults to true. */
+	includeContent?: boolean;
+	/** Max number of concurrent file-content fetches. Defaults to 6. */
+	concurrency?: number;
 }
 
 interface ValAuthor {
@@ -247,10 +252,39 @@ async function fetchValFiles(
 	return files;
 }
 
+async function mapWithConcurrency<T, R>(
+	items: T[],
+	concurrency: number,
+	fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+	const results: R[] = new Array(items.length);
+	let nextIndex = 0;
+
+	async function worker() {
+		while (nextIndex < items.length) {
+			const index = nextIndex++;
+			results[index] = await fn(items[index]);
+		}
+	}
+
+	const workers = Array.from(
+		{ length: Math.min(concurrency, items.length) },
+		() => worker(),
+	);
+	await Promise.all(workers);
+	return results;
+}
+
 export function valTownLoader(options: ValTownLoaderOptions = {}): Loader {
 	return {
 		name: "valtown-loader",
 		load: async ({ store, logger, parseData, config }) => {
+			if (options.limit != null && (!Number.isInteger(options.limit) || options.limit < 1)) {
+				throw new Error(
+					`Invalid limit: ${options.limit}. Must be a positive integer.`,
+				);
+			}
+
 			const envMode = process.env.NODE_ENV ?? "";
 			const env = loadEnv(envMode, fileURLToPath(config.root), "");
 			const token =
@@ -262,6 +296,9 @@ export function valTownLoader(options: ValTownLoaderOptions = {}): Loader {
 				);
 			}
 
+			const includeContent = options.includeContent !== false;
+			const concurrency = options.concurrency ?? DEFAULT_CONCURRENCY;
+
 			logger.info("Fetching vals from Val Town…");
 			store.clear();
 
@@ -269,14 +306,17 @@ export function valTownLoader(options: ValTownLoaderOptions = {}): Loader {
 
 			for await (const val of fetchAllVals(token, options)) {
 				const files = await fetchValFiles(val.id, token);
-				const fileContents: Record<string, string | null> = {};
 
-				for (const file of files) {
-					fileContents[file.path] = await fetchFileContent(
-						val.id,
-						file.path,
-						token,
+				let fileContents: Record<string, string | null> = {};
+				if (includeContent) {
+					const contents = await mapWithConcurrency(
+						files,
+						concurrency,
+						(file) => fetchFileContent(val.id, file.path, token),
 					);
+					for (let i = 0; i < files.length; i++) {
+						fileContents[files[i].path] = contents[i];
+					}
 				}
 
 				const data = await parseData({
@@ -296,7 +336,7 @@ export function valTownLoader(options: ValTownLoaderOptions = {}): Loader {
 							url: f.links.html,
 							moduleUrl: f.links.module ?? null,
 							endpointUrl: f.links.endpoint ?? null,
-							content: fileContents[f.path] ?? null,
+							content: includeContent ? (fileContents[f.path] ?? null) : null,
 						})),
 					},
 				});

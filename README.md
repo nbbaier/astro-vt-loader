@@ -10,15 +10,17 @@ npm install astro-valtown-loader
 
 ## Usage
 
+Set your Val Town API token via the `VALTOWN_API_TOKEN` environment variable (in `.env` or your shell), or pass it directly via the `token` option.
+
 ```ts
 // src/content.config.ts
 import { defineCollection } from "astro:content";
 import { valTownLoader } from "astro-valtown-loader";
 
 const vals = defineCollection({
-  loader: valTownLoader({
-    username: "your_username",
-  }),
+   loader: valTownLoader({
+      username: "your_username",
+   }),
 });
 
 export const collections = { vals };
@@ -44,12 +46,14 @@ const vals = await getCollection("vals");
 
 ## Configuration
 
-| Option     | Type     | Description                                                                  |
-| ---------- | -------- | ---------------------------------------------------------------------------- |
-| `token`    | `string` | Val Town API token. Falls back to `VALTOWN_API_TOKEN` env var.               |
-| `username` | `string` | Filter vals by username. Without it, returns the authenticated user's vals.   |
-| `privacy`  | `string` | Filter by privacy level: `"public"`, `"unlisted"`, or `"private"`.           |
-| `limit`    | `number` | Max number of vals to fetch. Defaults to all.                                |
+| Option           | Type      | Description                                                                 |
+| ---------------- | --------- | --------------------------------------------------------------------------- |
+| `token`          | `string`  | Val Town API token. Falls back to `VALTOWN_API_TOKEN` env var.              |
+| `username`       | `string`  | Filter vals by username. Without it, returns the authenticated user's vals. |
+| `privacy`        | `string`  | Filter by privacy level: `"public"`, `"unlisted"`, or `"private"`.          |
+| `limit`          | `number`  | Max number of vals to fetch (must be ≥ 1). Defaults to all.                 |
+| `includeContent` | `boolean` | Whether to fetch file contents. Defaults to `true`.                         |
+| `concurrency`    | `number`  | Max concurrent file-content fetches. Defaults to `6`.                       |
 
 ## Entry Schema
 
@@ -62,7 +66,7 @@ Each val entry includes:
 - `imageUrl` — Val image URL (nullable)
 - `description` — Val description (nullable)
 - `url` — Link to the val on Val Town
-- `files` — Array of file objects with `name`, `path`, `type`, `url`, `moduleUrl`, `endpointUrl`, and `content`
+- `files` — Array of file objects with `name`, `path`, `type`, `url`, `moduleUrl` (nullable), `endpointUrl` (nullable), and `content` (nullable — `null` when `includeContent` is `false` or the file was not found)
 
 ## License
 
