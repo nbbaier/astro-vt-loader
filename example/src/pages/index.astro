@@ -5,83 +5,89 @@ const vals = await getCollection("vals");
 ---
 
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Val Town Vals</title>
-    <style>
-      body {
-        font-family: system-ui, sans-serif;
-        max-width: 800px;
-        margin: 2rem auto;
-        padding: 0 1rem;
-        color: #1a1a1a;
-      }
-      h1 {
-        border-bottom: 2px solid #e5e5e5;
-        padding-bottom: 0.5rem;
-      }
-      .val {
-        border: 1px solid #e5e5e5;
-        border-radius: 8px;
-        padding: 1rem;
-        margin-bottom: 1rem;
-      }
-      .val h2 {
-        margin-top: 0;
-      }
-      .val a {
-        color: #3b82f6;
-      }
-      .meta {
-        font-size: 0.85rem;
-        color: #666;
-      }
-      .files {
-        margin-top: 0.5rem;
-        font-size: 0.85rem;
-      }
-      .files summary {
-        cursor: pointer;
-        color: #666;
-      }
-      .files pre {
-        background: #f5f5f5;
-        padding: 0.75rem;
-        border-radius: 4px;
-        overflow-x: auto;
-        font-size: 0.8rem;
-      }
-    </style>
-  </head>
-  <body>
-    <h1>Val Town Vals</h1>
-    <p class="meta">Found {vals.length} vals</p>
+   <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>Val Town Vals</title>
+      <style>
+         body {
+            font-family: system-ui, sans-serif;
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            color: #1a1a1a;
+         }
+         h1 {
+            border-bottom: 2px solid #e5e5e5;
+            padding-bottom: 0.5rem;
+         }
+         .val {
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+         }
+         .val h2 {
+            margin-top: 0;
+         }
+         .val a {
+            color: #3b82f6;
+         }
+         .meta {
+            font-size: 0.85rem;
+            color: #666;
+         }
+         .files {
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+         }
+         .files summary {
+            cursor: pointer;
+            color: #666;
+         }
+         .files pre {
+            background: #f5f5f5;
+            padding: 0.75rem;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 0.8rem;
+         }
+      </style>
+   </head>
+   <body>
+      <h1>Val Town Vals</h1>
+      <p class="meta">Found {vals.length} vals</p>
 
-    {vals.map((val) => (
-      <div class="val">
-        <h2>
-          <a href={val.data.url}>{val.data.name}</a>
-        </h2>
-        {val.data.description && <p>{val.data.description}</p>}
-        <p class="meta">
-          by {val.data.author.username} · {val.data.privacy} ·
-          {val.data.createdAt.toLocaleDateString()}
-        </p>
-        {val.data.files.length > 0 && (
-          <div class="files">
-            <details>
-              <summary>{val.data.files.length} file(s)</summary>
-              {val.data.files.map((file) => (
-                <div>
-                  <strong>{file.path}</strong>
-                  {file.content && <pre><code>{file.content}</code></pre>}
-                </div>
-              ))}
-            </details>
-          </div>
-        )}
-      </div>
-    ))}
-  </body>
+      {
+         vals.map((val) => (
+            <div class="val">
+               <h2>
+                  <a href={val.data.url}>{val.data.name}</a>
+               </h2>
+               {val.data.description && <p>{val.data.description}</p>}
+               <p class="meta">
+                  by {val.data.author.username} · {val.data.privacy} ·
+                  {val.data.createdAt.toLocaleDateString()}
+               </p>
+               {val.data.files.length > 0 && (
+                  <div class="files">
+                     <details>
+                        <summary>{val.data.files.length} file(s)</summary>
+                        {val.data.files.map((file) => (
+                           <div>
+                              <strong>{file.path}</strong>
+                              {file.content && (
+                                 <pre>
+                                    <code>{file.content}</code>
+                                 </pre>
+                              )}
+                           </div>
+                        ))}
+                     </details>
+                  </div>
+               )}
+            </div>
+         ))
+      }
+   </body>
 </html>

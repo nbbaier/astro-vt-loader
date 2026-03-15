@@ -1,36 +1,42 @@
 {
-	"name": "astro-valtown-loader",
-	"version": "0.1.0",
-	"description": "An Astro content loader for Val Town vals",
-	"type": "module",
-	"main": "dist/index.js",
-	"types": "dist/index.d.ts",
-	"exports": {
-		".": {
-			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
-		}
-	},
-	"files": [
-		"dist"
-	],
-	"scripts": {
-		"build": "tsc",
-		"dev": "tsc --watch"
-	},
-	"keywords": [
-		"astro",
-		"astro-loader",
-		"valtown",
-		"val-town",
-		"content-loader"
-	],
-	"license": "MIT",
-	"peerDependencies": {
-		"astro": ">=5.0.0"
-	},
-	"devDependencies": {
-		"@types/node": "^25.5.0",
-		"typescript": "^5.9.3"
-	}
+  "name": "astro-valtown-loader",
+  "version": "0.1.0",
+  "description": "An Astro content loader for Val Town vals",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "astro",
+    "astro-loader",
+    "valtown",
+    "val-town",
+    "content-loader"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "astro": "^6.0.4"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.7",
+    "@types/node": "^25.5.0",
+    "typescript": "^5.9.3",
+    "@types/bun": "latest"
+  },
+  "dependencies": {
+    "vite": "^8.0.0"
+  },
+  "private": true
 }

@@ -279,7 +279,10 @@ export function valTownLoader(options: ValTownLoaderOptions = {}): Loader {
 	return {
 		name: "valtown-loader",
 		load: async ({ store, logger, parseData, config }) => {
-			if (options.limit != null && (!Number.isInteger(options.limit) || options.limit < 1)) {
+			if (
+				options.limit != null &&
+				(!Number.isInteger(options.limit) || options.limit < 1)
+			) {
 				throw new Error(
 					`Invalid limit: ${options.limit}. Must be a positive integer.`,
 				);
@@ -307,7 +310,7 @@ export function valTownLoader(options: ValTownLoaderOptions = {}): Loader {
 			for await (const val of fetchAllVals(token, options)) {
 				const files = await fetchValFiles(val.id, token);
 
-				let fileContents: Record<string, string | null> = {};
+				const fileContents: Record<string, string | null> = {};
 				if (includeContent) {
 					const contents = await mapWithConcurrency(
 						files,
