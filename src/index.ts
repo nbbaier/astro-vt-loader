@@ -347,29 +347,53 @@ export function valTownLoader(options: ValTownLoaderOptions = {}): Loader {
 
 			logger.info(`Loaded ${count} vals from Val Town`);
 		},
-		schema: z.object({
-			name: z.string(),
-			createdAt: z.coerce.date(),
-			privacy: z.enum(["public", "unlisted", "private"]),
-			author: z.object({
-				type: z.string(),
-				id: z.string(),
-				username: z.string(),
-			}),
-			imageUrl: z.string().nullable(),
-			description: z.string().nullable(),
-			url: z.string().url(),
-			files: z.array(
-				z.object({
-					name: z.string(),
-					path: z.string(),
+		createSchema: async () => ({
+			schema: z.object({
+				name: z.string(),
+				createdAt: z.coerce.date(),
+				privacy: z.enum(["public", "unlisted", "private"]),
+				author: z.object({
 					type: z.string(),
-					url: z.string(),
-					moduleUrl: z.string().nullable(),
-					endpointUrl: z.string().nullable(),
-					content: z.string().nullable(),
+					id: z.string(),
+					username: z.string(),
 				}),
-			),
+				imageUrl: z.string().nullable(),
+				description: z.string().nullable(),
+				url: z.string().url(),
+				files: z.array(
+					z.object({
+						name: z.string(),
+						path: z.string(),
+						type: z.string(),
+						url: z.string(),
+						moduleUrl: z.string().nullable(),
+						endpointUrl: z.string().nullable(),
+						content: z.string().nullable(),
+					}),
+				),
+			}),
+			types: `export type Entry = {
+	name: string;
+	createdAt: Date;
+	privacy: "public" | "unlisted" | "private";
+	author: {
+		type: string;
+		id: string;
+		username: string;
+	};
+	imageUrl: string | null;
+	description: string | null;
+	url: string;
+	files: Array<{
+		name: string;
+		path: string;
+		type: string;
+		url: string;
+		moduleUrl: string | null;
+		endpointUrl: string | null;
+		content: string | null;
+	}>;
+};`,
 		}),
 	} satisfies Loader;
 }
