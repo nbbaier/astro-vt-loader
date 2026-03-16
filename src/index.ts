@@ -9,11 +9,11 @@ const FILE_CONTENT_BASE_DELAY_MS = 250;
 const FILE_CONTENT_MAX_DELAY_MS = 4000;
 const DEFAULT_CONCURRENCY = 6;
 
-function sleep(ms: number): Promise<void> {
+export function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function getRetryAfterDelayMs(response: Response): number | null {
+export function getRetryAfterDelayMs(response: Response): number | null {
 	const retryAfter = response.headers.get("retry-after");
 	if (!retryAfter) return null;
 
@@ -30,7 +30,7 @@ function getRetryAfterDelayMs(response: Response): number | null {
 	return Math.max(0, retryAfterDateMs - Date.now());
 }
 
-function isRetriableFileContentStatus(status: number): boolean {
+export function isRetriableFileContentStatus(status: number): boolean {
 	return status === 429 || status >= 500;
 }
 
@@ -252,7 +252,7 @@ async function fetchValFiles(
 	return files;
 }
 
-async function mapWithConcurrency<T, R>(
+export async function mapWithConcurrency<T, R>(
 	items: T[],
 	concurrency: number,
 	fn: (item: T) => Promise<R>,
