@@ -1,11 +1,11 @@
-# astro-valtown-loader
+# astro-vt-loader
 
 An [Astro content loader](https://docs.astro.build/en/reference/content-loader-reference/) that loads [Val Town](https://val.town) vals into content collections.
 
 ## Installation
 
 ```bash
-npm install astro-valtown-loader
+npm install astro-vt-loader
 ```
 
 ## Usage
@@ -15,7 +15,7 @@ Set your Val Town API token via the `VALTOWN_API_TOKEN` environment variable (in
 ```ts
 // src/content.config.ts
 import { defineCollection } from "astro:content";
-import { valTownLoader } from "astro-valtown-loader";
+import { valTownLoader } from "astro-vt-loader";
 
 const vals = defineCollection({
    loader: valTownLoader({

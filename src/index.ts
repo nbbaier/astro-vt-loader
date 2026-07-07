@@ -277,7 +277,7 @@ export async function mapWithConcurrency<T, R>(
 
 export function valTownLoader(options: ValTownLoaderOptions = {}): Loader {
 	return {
-		name: "valtown-loader",
+		name: "vt-loader",
 		load: async ({ store, logger, parseData, config }) => {
 			if (
 				options.limit != null &&

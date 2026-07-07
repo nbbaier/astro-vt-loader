@@ -1,5 +1,5 @@
 import { defineCollection } from "astro:content";
-import { valTownLoader } from "astro-valtown-loader";
+import { valTownLoader } from "astro-vt-loader";
 
 const vals = defineCollection({
 	loader: valTownLoader({

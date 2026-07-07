@@ -13,6 +13,6 @@
 	},
 	"dependencies": {
 		"astro": "^6.0.4",
-		"astro-valtown-loader": "file:.."
+		"astro-vt-loader": "file:.."
 	}
 }
