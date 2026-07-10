@@ -1,8 +1,14 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import {
 	getRetryAfterDelayMs,
 	isRetriableFileContentStatus,
 	mapWithConcurrency,
+	parseEnvFile,
+	readEnvFileVar,
 	valTownLoader,
 } from "./index";
 
@@ -121,6 +127,62 @@ describe("mapWithConcurrency", () => {
 				return n;
 			}),
 		).rejects.toThrow("boom");
+	});
+});
+
+// ---------------------------------------------------------------------------
+// parseEnvFile / readEnvFileVar
+// ---------------------------------------------------------------------------
+describe("parseEnvFile", () => {
+	test("parses key=value pairs, skipping blanks and comments", () => {
+		const contents = [
+			"# a comment",
+			"",
+			"FOO=bar",
+			'QUOTED="quoted value"',
+			"SINGLE='single value'",
+			"  SPACED = spaced value  ",
+		].join("\n");
+
+		expect(parseEnvFile(contents)).toEqual({
+			FOO: "bar",
+			QUOTED: "quoted value",
+			SINGLE: "single value",
+			SPACED: "spaced value",
+		});
+	});
+});
+
+describe("readEnvFileVar", () => {
+	let dir: string;
+
+	beforeEach(() => {
+		dir = mkdtempSync(join(tmpdir(), "vt-loader-test-"));
+	});
+
+	afterEach(() => {
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	test("reads a var from .env", () => {
+		writeFileSync(join(dir, ".env"), "VALTOWN_API_TOKEN=dot-env-token\n");
+		const root = pathToFileURL(`${dir}/`);
+		expect(readEnvFileVar(root, "VALTOWN_API_TOKEN")).toBe("dot-env-token");
+	});
+
+	test(".env.local takes precedence over .env", () => {
+		writeFileSync(join(dir, ".env"), "VALTOWN_API_TOKEN=base-token\n");
+		writeFileSync(
+			join(dir, ".env.local"),
+			"VALTOWN_API_TOKEN=local-token\n",
+		);
+		const root = pathToFileURL(`${dir}/`);
+		expect(readEnvFileVar(root, "VALTOWN_API_TOKEN")).toBe("local-token");
+	});
+
+	test("returns undefined when no env file exists", () => {
+		const root = pathToFileURL(`${dir}/`);
+		expect(readEnvFileVar(root, "VALTOWN_API_TOKEN")).toBeUndefined();
 	});
 });
 
@@ -252,6 +314,33 @@ describe("valTownLoader", () => {
 			} else {
 				delete process.env.VALTOWN_API_TOKEN;
 			}
+		}
+	});
+
+	test("reads token from a project .env file", async () => {
+		const prev = process.env.VALTOWN_API_TOKEN;
+		delete process.env.VALTOWN_API_TOKEN;
+		const dir = mkdtempSync(join(tmpdir(), "vt-loader-test-"));
+		writeFileSync(join(dir, ".env"), "VALTOWN_API_TOKEN=dot-env-token\n");
+
+		try {
+			setupMockApi();
+			const loader = valTownLoader();
+			const ctx = makeLoaderContext();
+			ctx.config.root = pathToFileURL(`${dir}/`);
+
+			await loader.load(ctx as Parameters<typeof loader.load>[0]);
+
+			const fetchMock = globalThis.fetch as unknown as {
+				mock: { calls: [RequestInfo | URL, RequestInit | undefined][] };
+			};
+			const [, init] = fetchMock.mock.calls[0];
+			expect(
+				(init?.headers as Record<string, string>)?.Authorization,
+			).toBe("Bearer dot-env-token");
+		} finally {
+			if (prev !== undefined) process.env.VALTOWN_API_TOKEN = prev;
+			rmSync(dir, { recursive: true, force: true });
 		}
 	});
 

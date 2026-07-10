@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import type { Loader } from "astro/loaders";
 import { z } from "astro/zod";
 
@@ -33,7 +34,7 @@ export function isRetriableFileContentStatus(status: number): boolean {
 }
 
 interface ValTownLoaderOptions {
-	/** Val Town API token (bearer token). Falls back to VALTOWN_API_TOKEN env var. */
+	/** Val Town API token (bearer token). Falls back to the VALTOWN_API_TOKEN env var, then to a project .env/.env.local file. */
 	token?: string;
 	/** Filter by username. If not set, returns the authenticated user's vals. */
 	username?: string;
@@ -273,10 +274,48 @@ export async function mapWithConcurrency<T, R>(
 	return results;
 }
 
+export function parseEnvFile(contents: string): Record<string, string> {
+	const values: Record<string, string> = {};
+	for (const rawLine of contents.split(/\r?\n/)) {
+		const line = rawLine.trim();
+		if (!line || line.startsWith("#")) continue;
+
+		const eq = line.indexOf("=");
+		if (eq === -1) continue;
+
+		const key = line.slice(0, eq).trim();
+		let value = line.slice(eq + 1).trim();
+		if (
+			(value.startsWith('"') && value.endsWith('"')) ||
+			(value.startsWith("'") && value.endsWith("'"))
+		) {
+			value = value.slice(1, -1);
+		}
+		values[key] = value;
+	}
+	return values;
+}
+
+/** Reads a var from `.env.local`/`.env` in `root`, without depending on Vite. */
+export function readEnvFileVar(root: URL, key: string): string | undefined {
+	for (const filename of [".env.local", ".env"]) {
+		let contents: string;
+		try {
+			contents = readFileSync(new URL(filename, root), "utf-8");
+		} catch {
+			continue;
+		}
+
+		const value = parseEnvFile(contents)[key];
+		if (value !== undefined) return value;
+	}
+	return undefined;
+}
+
 export function valTownLoader(options: ValTownLoaderOptions = {}): Loader {
 	return {
 		name: "vt-loader",
-		load: async ({ store, logger, parseData }) => {
+		load: async ({ store, logger, parseData, config }) => {
 			if (
 				options.limit != null &&
 				(!Number.isInteger(options.limit) || options.limit < 1)
@@ -286,7 +325,10 @@ export function valTownLoader(options: ValTownLoaderOptions = {}): Loader {
 				);
 			}
 
-			const token = options.token ?? process.env.VALTOWN_API_TOKEN;
+			const token =
+				options.token ??
+				process.env.VALTOWN_API_TOKEN ??
+				readEnvFileVar(config.root, "VALTOWN_API_TOKEN");
 
 			if (!token) {
 				throw new Error(
