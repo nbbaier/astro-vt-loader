@@ -1,7 +1,5 @@
-import { fileURLToPath } from "node:url";
 import type { Loader } from "astro/loaders";
 import { z } from "astro/zod";
-import { loadEnv } from "vite";
 
 const API_BASE = "https://api.val.town";
 const FILE_CONTENT_MAX_ATTEMPTS = 4;
@@ -278,7 +276,7 @@ export async function mapWithConcurrency<T, R>(
 export function valTownLoader(options: ValTownLoaderOptions = {}): Loader {
 	return {
 		name: "vt-loader",
-		load: async ({ store, logger, parseData, config }) => {
+		load: async ({ store, logger, parseData }) => {
 			if (
 				options.limit != null &&
 				(!Number.isInteger(options.limit) || options.limit < 1)
@@ -288,10 +286,7 @@ export function valTownLoader(options: ValTownLoaderOptions = {}): Loader {
 				);
 			}
 
-			const envMode = process.env.NODE_ENV ?? "";
-			const env = loadEnv(envMode, fileURLToPath(config.root), "");
-			const token =
-				options.token ?? process.env.VALTOWN_API_TOKEN ?? env.VALTOWN_API_TOKEN;
+			const token = options.token ?? process.env.VALTOWN_API_TOKEN;
 
 			if (!token) {
 				throw new Error(
