@@ -189,13 +189,22 @@ describe("valTownLoader", () => {
 		});
 	}
 
-	function makeLoaderContext() {
-		const entries = new Map<string, unknown>();
+	function makeLoaderContext(seedEntries: Record<string, unknown> = {}) {
+		const entries = new Map<string, unknown>(Object.entries(seedEntries));
+		const digests = new Map<string, string>();
 		return {
 			store: {
 				clear: mock(() => entries.clear()),
-				set: mock((entry: { id: string; data: unknown }) => {
+				keys: mock(() => [...entries.keys()]),
+				delete: mock((key: string) => {
+					entries.delete(key);
+					digests.delete(key);
+				}),
+				set: mock((entry: { id: string; data: unknown; digest?: string }) => {
 					entries.set(entry.id, entry.data);
+					if (entry.digest !== undefined) {
+						digests.set(entry.id, entry.digest);
+					}
 				}),
 			},
 			logger: {
@@ -206,10 +215,12 @@ describe("valTownLoader", () => {
 			parseData: mock(({ data }: { id: string; data: unknown }) =>
 				Promise.resolve(data),
 			),
+			generateDigest: mock((data: unknown) => JSON.stringify(data)),
 			config: {
 				root: new URL("file:///fake/project/"),
 			},
 			entries,
+			digests,
 		};
 	}
 
@@ -278,6 +289,34 @@ describe("valTownLoader", () => {
 		expect((stored.files as Array<{ content: string }>)[0].content).toBe(
 			"console.log('hello');",
 		);
+	});
+
+	test("passes a stable digest per entry and does not clear the store", async () => {
+		setupMockApi();
+		const loader = valTownLoader({ token: "test-token" });
+		const ctx = makeLoaderContext();
+
+		await loader.load(ctx as Parameters<typeof loader.load>[0]);
+		const firstDigest = ctx.digests.get("val-1");
+
+		await loader.load(ctx as Parameters<typeof loader.load>[0]);
+
+		expect(ctx.store.clear).not.toHaveBeenCalled();
+		expect(firstDigest).toEqual(expect.any(String));
+		expect(firstDigest).not.toBe("");
+		expect(ctx.digests.get("val-1")).toBe(firstDigest);
+	});
+
+	test("deletes entries for vals no longer returned by the API", async () => {
+		setupMockApi();
+		const loader = valTownLoader({ token: "test-token" });
+		const ctx = makeLoaderContext({ "stale-val": { name: "stale" } });
+
+		await loader.load(ctx as Parameters<typeof loader.load>[0]);
+
+		expect(ctx.store.delete).toHaveBeenCalledWith("stale-val");
+		expect(ctx.entries.has("stale-val")).toBe(false);
+		expect(ctx.entries.has("val-1")).toBe(true);
 	});
 
 	test("files defaults to none: no file APIs called, files is empty array", async () => {

@@ -289,7 +289,7 @@ export async function mapWithConcurrency<T, R>(
 export function valTownLoader(options: ValTownLoaderOptions = {}): Loader {
 	return {
 		name: "vt-loader",
-		load: async ({ store, logger, parseData }) => {
+		load: async ({ store, logger, parseData, generateDigest }) => {
 			if (
 				options.limit != null &&
 				(!Number.isInteger(options.limit) || options.limit < 1)
@@ -311,9 +311,9 @@ export function valTownLoader(options: ValTownLoaderOptions = {}): Loader {
 			const concurrency = options.concurrency ?? DEFAULT_CONCURRENCY;
 
 			logger.info("Fetching vals from Val Town…");
-			store.clear();
 
 			let count = 0;
+			const seenIds = new Set<string>();
 
 			for await (const val of fetchAllVals(token, options)) {
 				const metadata: ValMetadata = {
@@ -327,6 +327,7 @@ export function valTownLoader(options: ValTownLoaderOptions = {}): Loader {
 					url: val.links.html,
 				};
 				if (options.filter && !options.filter(metadata)) continue;
+				seenIds.add(val.id);
 
 				let files: FileMetadata[] = [];
 				const fileContents: Record<string, string | null> = {};
@@ -367,8 +368,15 @@ export function valTownLoader(options: ValTownLoaderOptions = {}): Loader {
 					},
 				});
 
-				store.set({ id: metadata.id, data });
+				const digest = generateDigest(data);
+				store.set({ id: metadata.id, data, digest });
 				count++;
+			}
+
+			for (const key of store.keys()) {
+				if (!seenIds.has(key)) {
+					store.delete(key);
+				}
 			}
 
 			logger.info(`Loaded ${count} vals from Val Town`);
