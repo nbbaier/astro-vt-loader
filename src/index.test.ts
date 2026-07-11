@@ -228,6 +228,33 @@ describe("valTownLoader", () => {
 		}
 	});
 
+	test("reads token from process.env.VALTOWN_API_TOKEN", async () => {
+		const prev = process.env.VALTOWN_API_TOKEN;
+		process.env.VALTOWN_API_TOKEN = "env-token";
+
+		try {
+			setupMockApi();
+			const loader = valTownLoader();
+			const ctx = makeLoaderContext();
+
+			await loader.load(ctx as Parameters<typeof loader.load>[0]);
+
+			const fetchMock = globalThis.fetch as unknown as {
+				mock: { calls: [RequestInfo | URL, RequestInit | undefined][] };
+			};
+			const [, init] = fetchMock.mock.calls[0];
+			expect(
+				(init?.headers as Record<string, string>)?.Authorization,
+			).toBe("Bearer env-token");
+		} finally {
+			if (prev !== undefined) {
+				process.env.VALTOWN_API_TOKEN = prev;
+			} else {
+				delete process.env.VALTOWN_API_TOKEN;
+			}
+		}
+	});
+
 	test("throws on invalid limit", async () => {
 		const loader = valTownLoader({ token: "test-token", limit: -1 });
 		const ctx = makeLoaderContext();
