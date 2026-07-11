@@ -46,14 +46,15 @@ const vals = await getCollection("vals");
 
 ## Configuration
 
-| Option           | Type      | Description                                                                 |
-| ---------------- | --------- | --------------------------------------------------------------------------- |
-| `token`          | `string`  | Val Town API token. Falls back to `VALTOWN_API_TOKEN` env var.              |
-| `username`       | `string`  | Filter vals by username. Without it, returns the authenticated user's vals. |
-| `privacy`        | `string`  | Filter by privacy level: `"public"`, `"unlisted"`, or `"private"`.          |
-| `limit`          | `number`  | Max number of vals to fetch (must be ≥ 1). Defaults to all.                 |
-| `includeContent` | `boolean` | Whether to fetch file contents. Defaults to `true`.                         |
-| `concurrency`    | `number`  | Max concurrent file-content fetches. Defaults to `6`.                       |
+| Option        | Type               | Description                                                                                                         |
+| ------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `token`       | `string`           | Val Town API token. Falls back to `VALTOWN_API_TOKEN` env var.                                                      |
+| `username`    | `string`           | Filter vals by username. Without it, returns the authenticated user's vals.                                         |
+| `privacy`     | `string`           | Filter by privacy level: `"public"`, `"unlisted"`, or `"private"`.                                                  |
+| `limit`       | `number`           | Max number of vals to fetch (must be ≥ 1). Defaults to all.                                                         |
+| `files`       | `string`           | `"none"` (default), `"list"`, or `"content"` — how much file data to fetch; `"content"` implies the list.             |
+| `filter`      | `(val) => boolean` | Keep only matching vals; runs before file fetching. Applied after `limit`, so fewer entries than `limit` may result. |
+| `concurrency` | `number`           | Max concurrent file-content fetches. Defaults to `6`.                                                               |
 
 ## Entry Schema
 
@@ -66,7 +67,7 @@ Each val entry includes:
 - `imageUrl` — Val image URL (nullable)
 - `description` — Val description (nullable)
 - `url` — Link to the val on Val Town
-- `files` — Array of file objects with `name`, `path`, `type`, `url`, `moduleUrl` (nullable), `endpointUrl` (nullable), and `content` (nullable — `null` when `includeContent` is `false` or the file was not found)
+- `files` — Always an array; empty unless `files: "list"` or `files: "content"` is set. File objects include `name`, `path`, `type`, `url`, `moduleUrl` (nullable), `endpointUrl` (nullable), and `content` (nullable — populated only in `"content"` mode, and `null` when the file was not found)
 
 ## License
 
