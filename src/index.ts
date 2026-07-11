@@ -41,8 +41,10 @@ interface ValTownLoaderOptions {
 	privacy?: "public" | "unlisted" | "private";
 	/** Max number of vals to fetch (handles pagination automatically). Defaults to all. */
 	limit?: number;
-	/** Whether to fetch file contents for each val. Defaults to true. */
-	includeContent?: boolean;
+	/** How much file data to fetch per val: no files (default), the file list, or list plus contents. "content" implies "list". */
+	files?: "none" | "list" | "content";
+	/** Keep only vals for which this returns true. Runs against val metadata before any file fetching. Synchronous only. */
+	filter?: (val: ValMetadata) => boolean;
 	/** Max number of concurrent file-content fetches. Defaults to 6. */
 	concurrency?: number;
 }
@@ -51,6 +53,17 @@ interface ValAuthor {
 	type: string;
 	id: string;
 	username: string;
+}
+
+export interface ValMetadata {
+	id: string;
+	name: string;
+	createdAt: string;
+	privacy: string;
+	author: ValAuthor;
+	imageUrl: string | null;
+	description: string | null;
+	url: string;
 }
 
 interface ValResponse {
@@ -294,7 +307,7 @@ export function valTownLoader(options: ValTownLoaderOptions = {}): Loader {
 				);
 			}
 
-			const includeContent = options.includeContent !== false;
+			const filesMode = options.files ?? "none";
 			const concurrency = options.concurrency ?? DEFAULT_CONCURRENCY;
 
 			logger.info("Fetching vals from Val Town…");
@@ -303,30 +316,45 @@ export function valTownLoader(options: ValTownLoaderOptions = {}): Loader {
 			let count = 0;
 
 			for await (const val of fetchAllVals(token, options)) {
-				const files = await fetchValFiles(val.id, token);
+				const metadata: ValMetadata = {
+					id: val.id,
+					name: val.name,
+					createdAt: val.createdAt,
+					privacy: val.privacy,
+					author: val.author,
+					imageUrl: val.imageUrl,
+					description: val.description,
+					url: val.links.html,
+				};
+				if (options.filter && !options.filter(metadata)) continue;
 
+				let files: FileMetadata[] = [];
 				const fileContents: Record<string, string | null> = {};
-				if (includeContent) {
-					const contents = await mapWithConcurrency(
-						files,
-						concurrency,
-						(file) => fetchFileContent(val.id, file.path, token),
-					);
-					for (let i = 0; i < files.length; i++) {
-						fileContents[files[i].path] = contents[i];
+
+				if (filesMode !== "none") {
+					files = await fetchValFiles(val.id, token);
+					if (filesMode === "content") {
+						const contents = await mapWithConcurrency(
+							files,
+							concurrency,
+							(file) => fetchFileContent(val.id, file.path, token),
+						);
+						for (let i = 0; i < files.length; i++) {
+							fileContents[files[i].path] = contents[i];
+						}
 					}
 				}
 
 				const data = await parseData({
-					id: val.id,
+					id: metadata.id,
 					data: {
-						name: val.name,
-						createdAt: val.createdAt,
-						privacy: val.privacy,
-						author: val.author,
-						imageUrl: val.imageUrl,
-						description: val.description,
-						url: val.links.html,
+						name: metadata.name,
+						createdAt: metadata.createdAt,
+						privacy: metadata.privacy,
+						author: metadata.author,
+						imageUrl: metadata.imageUrl,
+						description: metadata.description,
+						url: metadata.url,
 						files: files.map((f) => ({
 							name: f.name,
 							path: f.path,
@@ -334,12 +362,12 @@ export function valTownLoader(options: ValTownLoaderOptions = {}): Loader {
 							url: f.links.html,
 							moduleUrl: f.links.module ?? null,
 							endpointUrl: f.links.endpoint ?? null,
-							content: includeContent ? (fileContents[f.path] ?? null) : null,
+							content: fileContents[f.path] ?? null,
 						})),
 					},
 				});
 
-				store.set({ id: val.id, data });
+				store.set({ id: metadata.id, data });
 				count++;
 			}
 

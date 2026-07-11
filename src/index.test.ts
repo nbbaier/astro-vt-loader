@@ -167,9 +167,9 @@ describe("valTownLoader", () => {
 		},
 	};
 
-	function setupMockApi(opts?: { includeContent?: boolean }) {
-		const includeContent = opts?.includeContent !== false;
+	function setupMockApi(requestedUrls: string[] = []) {
 		mockFetch((url) => {
+			requestedUrls.push(url);
 			if (url.includes("/v2/vals?") || url.includes("/v2/vals&")) {
 				return Response.json({
 					data: [fakeVal],
@@ -265,7 +265,7 @@ describe("valTownLoader", () => {
 
 	test("loads vals into the store", async () => {
 		setupMockApi();
-		const loader = valTownLoader({ token: "test-token" });
+		const loader = valTownLoader({ token: "test-token", files: "content" });
 		const ctx = makeLoaderContext();
 
 		await loader.load(ctx as Parameters<typeof loader.load>[0]);
@@ -280,20 +280,46 @@ describe("valTownLoader", () => {
 		);
 	});
 
-	test("skips file content when includeContent is false", async () => {
-		setupMockApi({ includeContent: false });
-		const loader = valTownLoader({
-			token: "test-token",
-			includeContent: false,
-		});
+	test("files defaults to none: no file APIs called, files is empty array", async () => {
+		const requestedUrls: string[] = [];
+		setupMockApi(requestedUrls);
+		const loader = valTownLoader({ token: "test-token" });
 		const ctx = makeLoaderContext();
 
 		await loader.load(ctx as Parameters<typeof loader.load>[0]);
 
 		const stored = ctx.entries.get("val-1") as Record<string, unknown>;
+		expect(stored.files).toEqual([]);
+		expect(requestedUrls.some((url) => url.includes("/files"))).toBe(false);
+	});
+
+	test("files: 'list' fetches file metadata but no content", async () => {
+		const requestedUrls: string[] = [];
+		setupMockApi(requestedUrls);
+		const loader = valTownLoader({ token: "test-token", files: "list" });
+		const ctx = makeLoaderContext();
+
+		await loader.load(ctx as Parameters<typeof loader.load>[0]);
+
+		const stored = ctx.entries.get("val-1") as Record<string, unknown>;
+		const files = stored.files as Array<{ name: string; content: string | null }>;
+		expect(files[0].name).toBe("main.ts");
+		expect(files[0].content).toBeNull();
 		expect(
-			(stored.files as Array<{ content: string | null }>)[0].content,
-		).toBeNull();
+			requestedUrls.some((url) => url.includes("/files/content")),
+		).toBe(false);
+	});
+
+	test("files: 'content' fetches file bodies", async () => {
+		setupMockApi();
+		const loader = valTownLoader({ token: "test-token", files: "content" });
+		const ctx = makeLoaderContext();
+
+		await loader.load(ctx as Parameters<typeof loader.load>[0]);
+
+		const stored = ctx.entries.get("val-1") as Record<string, unknown>;
+		const files = stored.files as Array<{ content: string | null }>;
+		expect(files[0].content).toBe("console.log('hello');");
 	});
 
 	test("respects the limit option", async () => {
@@ -322,5 +348,68 @@ describe("valTownLoader", () => {
 		await loader.load(ctx as Parameters<typeof loader.load>[0]);
 
 		expect(ctx.store.set).toHaveBeenCalledTimes(2);
+	});
+
+	test("filter excludes vals and skips their file fetches", async () => {
+		const requestedUrls: string[] = [];
+		mockFetch((url) => {
+			requestedUrls.push(url);
+			if (url.includes("/v2/vals?")) {
+				return Response.json({
+					data: [
+						{ ...fakeVal, id: "val-1", name: "keep" },
+						{ ...fakeVal, id: "val-2", name: "drop" },
+					],
+					links: { self: url },
+				});
+			}
+			if (url.includes("/files/content")) {
+				return new Response("code", { status: 200 });
+			}
+			if (url.includes("/files")) {
+				return Response.json({ data: [fakeFile], links: { self: url } });
+			}
+			return new Response("Not found", { status: 404 });
+		});
+
+		const loader = valTownLoader({
+			token: "test-token",
+			files: "content",
+			filter: (val) => val.name === "keep",
+		});
+		const ctx = makeLoaderContext();
+
+		await loader.load(ctx as Parameters<typeof loader.load>[0]);
+
+		expect([...ctx.entries.keys()]).toEqual(["val-1"]);
+		expect(
+			requestedUrls.some((url) => url.includes("val-2/files")),
+		).toBe(false);
+	});
+
+	test("filter receives val metadata including id and url", async () => {
+		setupMockApi();
+		let received: unknown;
+		const loader = valTownLoader({
+			token: "test-token",
+			filter: (val) => {
+				received = val;
+				return true;
+			},
+		});
+		const ctx = makeLoaderContext();
+
+		await loader.load(ctx as Parameters<typeof loader.load>[0]);
+
+		expect(received).toEqual({
+			id: "val-1",
+			name: "my-val",
+			createdAt: "2025-01-01T00:00:00.000Z",
+			privacy: "public",
+			author: { type: "user", id: "u1", username: "alice" },
+			imageUrl: null,
+			description: "A test val",
+			url: "https://www.val.town/x/alice/my-val",
+		});
 	});
 });
