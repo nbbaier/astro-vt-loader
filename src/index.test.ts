@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, describe, expect, mock, test } from "bun:test";
 import {
 	getRetryAfterDelayMs,
 	isRetriableFileContentStatus,
@@ -34,7 +34,10 @@ describe("getRetryAfterDelayMs", () => {
 		const res = new Response(null, {
 			headers: { "retry-after": futureDate },
 		});
-		const ms = getRetryAfterDelayMs(res)!;
+		const ms = getRetryAfterDelayMs(res);
+		if (ms === null) {
+			throw new Error("Expected a retry delay for a future date");
+		}
 		expect(ms).toBeGreaterThan(3000);
 		expect(ms).toBeLessThanOrEqual(5500);
 	});
@@ -236,9 +239,9 @@ describe("valTownLoader", () => {
 		try {
 			const loader = valTownLoader();
 			const ctx = makeLoaderContext();
-			await expect(
-				loadWithTestContext(loader, ctx),
-			).rejects.toThrow("token is required");
+			await expect(loadWithTestContext(loader, ctx)).rejects.toThrow(
+				"token is required",
+			);
 		} finally {
 			if (prev !== undefined) process.env.VALTOWN_API_TOKEN = prev;
 		}
@@ -274,9 +277,9 @@ describe("valTownLoader", () => {
 	test("throws on invalid limit", async () => {
 		const loader = valTownLoader({ token: "test-token", limit: -1 });
 		const ctx = makeLoaderContext();
-		await expect(
-			loadWithTestContext(loader, ctx),
-		).rejects.toThrow("Invalid limit");
+		await expect(loadWithTestContext(loader, ctx)).rejects.toThrow(
+			"Invalid limit",
+		);
 	});
 
 	test("loads vals into the store", async () => {
