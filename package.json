@@ -15,7 +15,7 @@
 		"dist"
 	],
 	"scripts": {
-		"build": "tsdown",
+		"build": "bun run typecheck && tsdown",
 		"dev": "tsdown --watch",
 		"typecheck": "tsc --noEmit",
 		"test": "bun test"
