@@ -192,9 +192,10 @@ describe("valTownLoader", () => {
 	function makeLoaderContext(seedEntries: Record<string, unknown> = {}) {
 		const entries = new Map<string, unknown>(Object.entries(seedEntries));
 		const digests = new Map<string, string>();
+		const clear = mock(() => entries.clear());
 		return {
 			store: {
-				clear: mock(() => entries.clear()),
+				clear,
 				keys: mock(() => [...entries.keys()]),
 				delete: mock((key: string) => {
 					entries.delete(key);
@@ -221,6 +222,7 @@ describe("valTownLoader", () => {
 			},
 			entries,
 			digests,
+			clear,
 		};
 	}
 
@@ -301,7 +303,7 @@ describe("valTownLoader", () => {
 
 		await loader.load(ctx as Parameters<typeof loader.load>[0]);
 
-		expect(ctx.store.clear).not.toHaveBeenCalled();
+		expect(ctx.clear).not.toHaveBeenCalled();
 		expect(firstDigest).toEqual(expect.any(String));
 		expect(firstDigest).not.toBe("");
 		expect(ctx.digests.get("val-1")).toBe(firstDigest);
